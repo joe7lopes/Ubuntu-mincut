@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mincut"
+version = "1.0.0"
+description = "Clipboard history with a bezel, for Ubuntu"
+requires-python = ">=3.10"
+dependencies = ["PyQt6>=6.5"]
+
+[project.optional-dependencies]
+x11 = ["python-xlib>=0.33"]
+test = ["pytest>=7"]
+
+[project.scripts]
+mincut = "mincut.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["mincut*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

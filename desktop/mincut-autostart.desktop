@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Mincut
+Comment=Start Mincut when you log in
+Exec=mincut
+Icon=edit-paste
+Terminal=false
+X-GNOME-Autostart-enabled=true

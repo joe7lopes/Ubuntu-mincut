@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Mincut
+GenericName=Clipboard Manager
+Comment=Keeps a history of everything you copy and pastes from a bezel
+Exec=mincut
+Icon=edit-paste
+Terminal=false
+Categories=Utility;
+Keywords=clipboard;history;paste;
+StartupNotify=false

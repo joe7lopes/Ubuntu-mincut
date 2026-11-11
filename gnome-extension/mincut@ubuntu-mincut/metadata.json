@@ -1,0 +1,14 @@
+{
+  "uuid": "mincut@ubuntu-mincut",
+  "name": "Mincut clipboard bridge",
+  "description": "Reports clipboard changes to Mincut so its history keeps filling on GNOME Wayland, where applications cannot read each other's selections.",
+  "shell-version": [
+    "45",
+    "46",
+    "47",
+    "48",
+    "49",
+    "50"
+  ],
+  "version": 1
+}
