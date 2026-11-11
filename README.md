@@ -16,6 +16,31 @@ onwards, on Wayland or X11.
 
 ## Install
 
+### What you need
+
+| | Ubuntu 22.04+ with Wayland (GNOME) | Ubuntu with X11 |
+| --- | --- | --- |
+| Python | 3.10 or newer | 3.10 or newer |
+| Toolkit | `python3-pyqt6` (or `pip install PyQt6`) | same |
+| Clipboard | GNOME Shell bridge, bundled here | `xclip` |
+| Paste | nothing extra (uses the shell) | `xdotool` |
+| Global hotkey | registered as a desktop shortcut | `python-xlib` (grabbed directly) |
+
+```bash
+# Wayland session
+sudo apt install python3-pyqt6 git
+
+# X11 session
+sudo apt install python3-pyqt6 git xclip xdotool
+python3 -m pip install --user python-xlib
+```
+
+Optional, Wayland only: `sudo apt install ydotool` if you want Mincut to press
+Ctrl+V for you after you pick a clipping. Without it the clipping is still
+placed on the clipboard — you just press Ctrl+V yourself.
+
+### Quick install
+
 ```bash
 git clone https://github.com/joe7lopes/Ubuntu-mincut.git
 cd Ubuntu-mincut
@@ -23,16 +48,121 @@ cd Ubuntu-mincut
 mincut
 ```
 
-`install.sh` installs the Python package for your user, adds the menu entry and
-the autostart file, installs the small GNOME Shell bridge that Wayland needs,
-and registers the keyboard shortcut.
+`install.sh` does four things, and prints each one as it goes:
 
-Requirements: Python 3.10+, `python3-pyqt6`, and — on Wayland — the
-`gnome-shell` extension that ships in `gnome-extension/`. On X11, install
-`xclip` and `xdotool` for clipboard polling and paste simulation:
+1. installs the package for your user (`pip install --user`, falling back to
+   `--break-system-packages` where the distro Python refuses user installs);
+2. adds `mincut.desktop` to your applications menu and to autostart;
+3. copies the GNOME Shell bridge into
+   `~/.local/share/gnome-shell/extensions/mincut@ubuntu-mincut/` and enables it;
+4. registers the **Ctrl+Shift+V** shortcut, pointing at `mincut toggle`.
+
+### Manual install, step by step
+
+Use this if you would rather see every step, or if `install.sh` stops halfway.
 
 ```bash
-sudo apt install python3-pyqt6 xclip xdotool
+# 1. the application
+git clone https://github.com/joe7lopes/Ubuntu-mincut.git
+cd Ubuntu-mincut
+python3 -m pip install --user --break-system-packages -e .[x11]   # [x11] only on X11
+
+# 2. menu entry + autostart
+mkdir -p ~/.local/share/applications ~/.config/autostart
+cp desktop/mincut.desktop ~/.local/share/applications/
+cp desktop/mincut-autostart.desktop ~/.config/autostart/mincut.desktop
+
+# 3. the Wayland clipboard bridge (skip on X11)
+mkdir -p ~/.local/share/gnome-shell/extensions/mincut@ubuntu-mincut
+cp gnome-extension/mincut@ubuntu-mincut/* \
+   ~/.local/share/gnome-shell/extensions/mincut@ubuntu-mincut/
+```
+
+Then **log out and back in** — GNOME only scans the extensions directory at
+login — and enable it:
+
+```bash
+gnome-extensions enable mincut@ubuntu-mincut
+```
+
+```bash
+# 4. the hotkey
+mincut setup      # writes a GNOME custom shortcut calling `mincut toggle`
+mincut            # start the app
+```
+
+On X11, step 4 is unnecessary: the running instance grabs the key combination
+itself as soon as it starts, provided `python-xlib` is installed.
+
+### First run
+
+`mincut` starts in the tray with no window — that is expected. Copy a few
+things, then press **Ctrl+Shift+V** and the bezel opens. Pick a clipping with
+the arrow keys and press **Return**.
+
+To change the hotkey, the panel size, the opacity, how many clippings are kept
+or whether favourites are used at all, open **Preferences** from the tray menu
+(or run `mincut prefs`). Settings are written to
+`~/.config/mincut/config.json`; history and favourites live in
+`~/.local/share/mincut/clips.json`. They are written when you change a setting
+or quit the application, so a fresh install leaves nothing behind yet.
+
+### Check that it is set up correctly
+
+```bash
+mincut status          # prints the effective settings and the config path
+gsettings get org.gnome.settings-daemon.plugins.media-keys custom-keybindings
+```
+
+The second command should list a path ending in `custom-keybindings/mincut/`.
+On Wayland, `gnome-extensions list --enabled | grep mincut` should print the
+bridge.
+
+### Troubleshooting
+
+**The hotkey does nothing.** Run `mincut setup` again, then check for a
+clashing binding: Settings → Keyboard → View and Customise Shortcuts →
+Custom Shortcuts. Many terminals use Ctrl+Shift+V for "paste as plain text",
+which is harmless — the bezel opens on top — but if another application has
+taken the *global* shortcut, give Mincut a different one in Preferences and run
+`mincut setup` afterwards.
+
+**The bezel opens but the history is empty on Wayland.** The Shell bridge is not
+running. Confirm the extension is enabled, and remember that a freshly copied
+extension only loads after a log out and back in. On X11, install `xclip` —
+without it Mincut can write the clipboard but cannot watch it.
+
+**Nothing is pasted after pressing Return.** The clipping is on the clipboard,
+but the desktop will not accept a simulated Ctrl+V: install `xdotool` on X11 or
+`ydotool` on Wayland. Otherwise press Ctrl+V yourself — Mincut tells you so in a
+notification.
+
+**No tray icon.** GNOME needs AppIndicator support:
+`sudo apt install gnome-shell-extension-appindicator`, then log out and back in.
+The hotkey and the bezel work regardless of the tray.
+
+**`mincut: command not found`.** User installs land in `~/.local/bin`, which
+some login shells do not add to `PATH`. Add it:
+
+```bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+```
+
+**It does not start at login.** Check that
+`~/.config/autostart/mincut.desktop` exists and that the command inside it
+resolves — an autostart entry pointing at `mincut` fails silently if
+`~/.local/bin` is not on the `PATH` that GNOME uses.
+
+### Uninstall
+
+```bash
+mincut quit
+python3 -m pip uninstall mincut
+rm -f ~/.local/share/applications/mincut.desktop \
+      ~/.config/autostart/mincut.desktop
+gnome-extensions disable mincut@ubuntu-mincut
+rm -rf ~/.local/share/gnome-shell/extensions/mincut@ubuntu-mincut
+rm -rf ~/.config/mincut ~/.local/share/mincut     # history and settings
 ```
 
 ## Keys in the bezel
