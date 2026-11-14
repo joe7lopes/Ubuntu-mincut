@@ -62,11 +62,7 @@ class MincutApp(QObject):
         self.bezel.saveRequested.connect(self.save_clipboard_item)
         self.bezel.preferencesRequested.connect(self.show_preferences)
 
-        self.backend = clip_backend.ShellBridgeClipboard(lambda t: False, lambda: None)
-        try:
-            self.backend = clip_backend.detect()
-        except Exception:
-            pass
+        self.backend = self._clipboard_backend()
         self.watcher = clip_backend.ClipboardWatcher(self.backend)
         self.watcher.paused = not bool(self.settings["tracking"])
 
@@ -83,6 +79,38 @@ class MincutApp(QObject):
         self._save_timer.timeout.connect(self._save_clips)
         self._setup_dbus()
 
+    # -- clipboard backends ----------------------------------------------
+    def _clipboard_backend(self) -> clip_backend.ClipboardBackend:
+        """Pick the best backend for the session; GNOME Wayland uses the bridge."""
+        try:
+            return clip_backend.detect(gnome_bridge=self._shell_bridge())
+        except Exception:
+            return clip_backend.QtClipboard()
+
+    def _shell_bridge(self) -> clip_backend.ClipboardBackend:
+        """Reads arrive as D-Bus signals from the extension; writes go back out
+        through it, falling back to Qt while the bezel holds the focus."""
+        fallback = clip_backend.QtClipboard()
+
+        def write(text: str) -> bool:
+            try:
+                from PyQt6.QtDBus import QDBusConnection, QDBusInterface, QDBusMessage
+            except ImportError:
+                return fallback.write(text)
+            bus = QDBusConnection.sessionBus()
+            if not bus.isConnected():
+                return fallback.write(text)
+            shell = QDBusInterface(
+                "org.mincut.Shell", "/org/mincut/Shell", "org.mincut.Shell", bus
+            )
+            shell.setTimeout(2000)
+            reply = shell.call("SetClipboard", text)
+            if reply.type() == QDBusMessage.MessageType.ErrorMessage:
+                return fallback.write(text)
+            return True
+
+        # History is pushed to us, so polling has nothing to read.
+        return clip_backend.ShellBridgeClipboard(write, lambda: None)
 
     # -- D-Bus (the shell extension talks to us here) --------------------
     def _setup_dbus(self) -> None:
@@ -90,10 +118,14 @@ class MincutApp(QObject):
             from PyQt6.QtDBus import QDBusConnection
         except ImportError:
             return
-        from PyQt6.QtCore import QObject, pyqtSlot
+        from PyQt6.QtCore import QObject, pyqtClassInfo, pyqtSlot
 
         controller = self
 
+        # The interface name is what the extension calls.  PyQt exports
+        # nothing unless slots are requested, and names an undecorated class
+        # after its Python module, so both pieces are needed here.
+        @pyqtClassInfo("D-Bus Interface", "org.mincut.App")
         class Service(QObject):
             @pyqtSlot()
             def Toggle(self) -> None:
@@ -113,7 +145,9 @@ class MincutApp(QObject):
 
             @pyqtSlot(str)
             def SetClipboard(self, text: str) -> None:
-                controller.backend.write(text)
+                # Set through Qt: calling the Shell bridge here would ask the
+                # extension to set the same text again.
+                clip_backend.QtClipboard().write(text)
                 controller.watcher.set_current(text)
 
         bus = QDBusConnection.sessionBus()
@@ -122,7 +156,11 @@ class MincutApp(QObject):
             return
         bus.registerService("org.mincut.App")
         self.dbus_service = Service()
-        bus.registerObject("/org/mincut/App", self.dbus_service)
+        bus.registerObject(
+            "/org/mincut/App",
+            self.dbus_service,
+            QDBusConnection.RegisterOption.ExportAllSlots,
+        )
 
     # -- tray ------------------------------------------------------------
     def _setup_tray(self) -> None:

@@ -61,12 +61,14 @@ def toggle_command() -> str:
     """The command GNOME should run, with the binary's absolute path.
 
     ``~/.local/bin`` is not always on the PATH of the graphical session, and a
-    custom shortcut that calls the bare ``mincut`` then fails silently.
+    custom shortcut that calls the bare ``mincut`` then fails silently.  The
+    path is left unquoted: GSettings parses the value as a GVariant string and
+    rejects an embedded pair of quotes.
     """
     exe = shutil.which("mincut")
     if not exe and sys.argv and os.path.isfile(sys.argv[0]):
         exe = sys.argv[0]
-    return f'"{os.path.abspath(exe)}" toggle' if exe else "mincut toggle"
+    return f"{os.path.abspath(exe)} toggle" if exe else "mincut toggle"
 
 
 class ShortcutError(RuntimeError):
