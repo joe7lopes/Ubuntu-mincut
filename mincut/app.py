@@ -8,8 +8,16 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from PyQt6.QtCore import QObject, QTimer, Qt
-from PyQt6.QtGui import QAction, QColor, QIcon, QPainter, QPixmap
+from PyQt6.QtCore import QObject, QPointF, QRectF, QTimer, Qt
+from PyQt6.QtGui import (
+    QAction,
+    QColor,
+    QIcon,
+    QPainter,
+    QPainterPath,
+    QPen,
+    QPixmap,
+)
 from PyQt6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
 from . import clipboard as clip_backend
@@ -23,20 +31,86 @@ MAX_FILE_CHARS = 2000
 
 
 def tray_icon(active: bool = True) -> QIcon:
-    """A small scissors glyph drawn in code, so no image files are needed."""
+    """A sheet of paper with scissors, drawn in code so no image files are needed."""
     size = 32
     pix = QPixmap(size, size)
     pix.fill(Qt.GlobalColor.transparent)
     painter = QPainter(pix)
     painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-    color = QColor(230, 70, 60) if active else QColor(140, 140, 140)
+
+    paper = QColor("#fdfdfb") if active else QColor("#ededed")
+    border = QColor("#c4cad3") if active else QColor("#b9b9b9")
+    rule = QColor("#d3d9e1") if active else QColor("#c9c9c9")
+    fold = QColor("#e8edf3") if active else QColor("#dedede")
+    blade = QColor("#4a515b") if active else QColor("#8e8e8e")
+    handles = QColor("#e0574f") if active else QColor("#9c9c9c")
+
+    # sheet of paper with the top-right corner cut off
+    sheet = QPainterPath()
+    sheet.moveTo(9.5, 3.5)
+    sheet.lineTo(17.0, 3.5)
+    sheet.lineTo(23.5, 10.0)
+    sheet.lineTo(23.5, 27.0)
+    sheet.quadTo(23.5, 29.5, 21.0, 29.5)
+    sheet.lineTo(6.0, 29.5)
+    sheet.quadTo(3.5, 29.5, 3.5, 27.0)
+    sheet.lineTo(3.5, 6.0)
+    sheet.quadTo(3.5, 3.5, 6.0, 3.5)
+    sheet.closeSubpath()
+    painter.setPen(QPen(border, 1.4))
+    painter.setBrush(paper)
+    painter.drawPath(sheet)
+
+    corner = QPainterPath()
+    corner.moveTo(17.0, 3.5)
+    corner.lineTo(17.0, 10.0)
+    corner.lineTo(23.5, 10.0)
+    corner.closeSubpath()
+    painter.setBrush(fold)
+    painter.drawPath(corner)
+
+    # ruled lines
     painter.setPen(Qt.PenStyle.NoPen)
-    painter.setBrush(color)
-    painter.drawRoundedRect(2, 2, 28, 28, 7, 7)
-    painter.setPen(QColor(255, 255, 255, 235))
-    painter.drawText(pix.rect(), int(Qt.AlignmentFlag.AlignCenter), "\u2702")
+    painter.setBrush(rule)
+    for y, width in ((13.0, 8.0), (17.0, 10.0), (21.0, 6.0)):
+        painter.drawRoundedRect(QRectF(7.0, y, width, 1.4), 0.7, 0.7)
+
+    # scissors across the lower right of the sheet
+    painter.save()
+    painter.translate(19.0, 21.5)
+    painter.rotate(-36)
+    painter.scale(0.36, 0.36)
+    painter.setBrush(Qt.BrushStyle.NoBrush)
+
+    blades = ((QPointF(0, 0), QPointF(34, -11)), (QPointF(0, 0), QPointF(34, 11)))
+    arms = ((QPointF(0, 0), QPointF(-14, -9)), (QPointF(0, 0), QPointF(-14, 9)))
+    rings = ((QPointF(-21, -13), 7.0), (QPointF(-21, 13), 7.0))
+
+    painter.setPen(QPen(paper, 11, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+    for start, end in blades + arms:
+        painter.drawLine(start, end)
+    painter.setPen(QPen(paper, 9))
+    for centre, radius in rings:
+        painter.drawEllipse(centre, radius, radius)
+
+    painter.setPen(QPen(blade, 6, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+    for start, end in blades:
+        painter.drawLine(start, end)
+    painter.setPen(QPen(blade, 4.5, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+    for start, end in arms:
+        painter.drawLine(start, end)
+    painter.setPen(QPen(handles, 5))
+    for centre, radius in rings:
+        painter.drawEllipse(centre, radius, radius)
+
+    painter.setPen(Qt.PenStyle.NoPen)
+    painter.setBrush(blade)
+    painter.drawEllipse(QPointF(0, 0), 3.6, 3.6)
+    painter.restore()
+
     painter.end()
     return QIcon(pix)
+
 
 
 class MincutApp(QObject):

@@ -71,6 +71,8 @@ python3 -m pip install --user --break-system-packages -e .[x11]   # [x11] only o
 mkdir -p ~/.local/share/applications ~/.config/autostart
 cp desktop/mincut.desktop ~/.local/share/applications/
 cp desktop/mincut-autostart.desktop ~/.config/autostart/mincut.desktop
+mkdir -p ~/.local/share/icons/hicolor/scalable/apps
+cp desktop/mincut.svg ~/.local/share/icons/hicolor/scalable/apps/
 
 # 3. the Wayland clipboard bridge (skip on X11)
 mkdir -p ~/.local/share/gnome-shell/extensions/mincut@ubuntu-mincut
@@ -159,7 +161,8 @@ resolves — an autostart entry pointing at `mincut` fails silently if
 mincut quit
 python3 -m pip uninstall mincut
 rm -f ~/.local/share/applications/mincut.desktop \
-      ~/.config/autostart/mincut.desktop
+      ~/.config/autostart/mincut.desktop \
+      ~/.local/share/icons/hicolor/scalable/apps/mincut.svg
 gnome-extensions disable mincut@ubuntu-mincut
 rm -rf ~/.local/share/gnome-shell/extensions/mincut@ubuntu-mincut
 rm -rf ~/.config/mincut ~/.local/share/mincut     # history and settings

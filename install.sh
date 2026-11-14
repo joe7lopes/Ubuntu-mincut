@@ -30,6 +30,12 @@ install -d "$data_home/applications" "$autostart_dir"
 install_desktop_entry "$here/desktop/mincut.desktop" "$data_home/applications/mincut.desktop"
 install_desktop_entry "$here/desktop/mincut-autostart.desktop" "$autostart_dir/mincut.desktop"
 
+echo "==> Installing the icon"
+icon_dir="$data_home/icons/hicolor/scalable/apps"
+install -d "$icon_dir"
+install -m 644 "$here/desktop/mincut.svg" "$icon_dir/mincut.svg"
+gtk-update-icon-cache -q -t -f "$data_home/icons/hicolor" 2>/dev/null || true
+
 if command -v gnome-extensions >/dev/null 2>&1; then
   echo "==> Installing the GNOME Shell bridge (needed on Wayland)"
   ext_dir="$data_home/gnome-shell/extensions/mincut@ubuntu-mincut"

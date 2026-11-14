@@ -3,6 +3,6 @@ Type=Application
 Name=Mincut
 Comment=Start Mincut when you log in
 Exec=mincut
-Icon=edit-paste
+Icon=mincut
 Terminal=false
 X-GNOME-Autostart-enabled=true
