@@ -97,10 +97,10 @@ def main(argv=None) -> int:
         return 0
 
     if args.command == "setup":
-        from .hotkey import GnomeShortcut, is_wayland
+        from .hotkey import GnomeShortcut, is_wayland, toggle_command
 
         if is_wayland():
-            shortcut = GnomeShortcut("mincut toggle")
+            shortcut = GnomeShortcut(toggle_command())
             ok = shortcut.register(str(Settings.load()["main_shortcut"]))
             print("registered the desktop shortcut" if ok else "could not register a shortcut")
             return 0 if ok else 1

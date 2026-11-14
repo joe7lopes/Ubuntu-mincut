@@ -10,10 +10,25 @@ echo "==> Installing the Python package"
 python3 -m pip install --user --upgrade "$here" ||
   python3 -m pip install --user --upgrade --break-system-packages "$here"
 
+# The desktop session's PATH does not always contain ~/.local/bin, so the
+# entries point at the binary by absolute path instead of the bare `mincut`.
+if command -v mincut >/dev/null 2>&1; then
+  mincut_bin="$(command -v mincut)"
+else
+  user_scripts="$(python3 -c 'import sysconfig; print(sysconfig.get_path("scripts", "posix_user"))')"
+  mincut_bin="$user_scripts/mincut"
+fi
+[ -x "$mincut_bin" ] || mincut_bin="$HOME/.local/bin/mincut"
+
+install_desktop_entry() {
+  sed "s|^Exec=mincut$|Exec=\"$mincut_bin\"|" "$1" > "$2"
+  chmod 644 "$2"
+}
+
 echo "==> Adding the application entry"
 install -d "$data_home/applications" "$autostart_dir"
-install -m 644 "$here/desktop/mincut.desktop" "$data_home/applications/mincut.desktop"
-install -m 644 "$here/desktop/mincut-autostart.desktop" "$autostart_dir/mincut.desktop"
+install_desktop_entry "$here/desktop/mincut.desktop" "$data_home/applications/mincut.desktop"
+install_desktop_entry "$here/desktop/mincut-autostart.desktop" "$autostart_dir/mincut.desktop"
 
 if command -v gnome-extensions >/dev/null 2>&1; then
   echo "==> Installing the GNOME Shell bridge (needed on Wayland)"
@@ -25,7 +40,7 @@ if command -v gnome-extensions >/dev/null 2>&1; then
 fi
 
 echo "==> Registering the keyboard shortcut"
-"$HOME/.local/bin/mincut" setup || true
+"$mincut_bin" setup || true
 
 echo
 echo "Done. Start it now with: mincut"

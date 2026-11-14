@@ -12,6 +12,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import sys
 from typing import Callable, List, Optional
 
 CUSTOM_KEYBINDING_SCHEMA = "org.gnome.settings-daemon.plugins.media-keys"
@@ -54,6 +55,18 @@ def to_gnome_accelerator(text: str) -> str:
 
 def _has(cmd: str) -> bool:
     return shutil.which(cmd) is not None
+
+
+def toggle_command() -> str:
+    """The command GNOME should run, with the binary's absolute path.
+
+    ``~/.local/bin`` is not always on the PATH of the graphical session, and a
+    custom shortcut that calls the bare ``mincut`` then fails silently.
+    """
+    exe = shutil.which("mincut")
+    if not exe and sys.argv and os.path.isfile(sys.argv[0]):
+        exe = sys.argv[0]
+    return f'"{os.path.abspath(exe)}" toggle' if exe else "mincut toggle"
 
 
 class ShortcutError(RuntimeError):

@@ -279,7 +279,7 @@ class MincutApp(QObject):
         self._shortcuts_done = True
         shortcut = str(self.settings["main_shortcut"])
         if hotkey.is_wayland():
-            self._gnome = hotkey.GnomeShortcut("mincut toggle")
+            self._gnome = hotkey.GnomeShortcut(hotkey.toggle_command())
             if self._gnome.available():
                 self._gnome.register(shortcut)
         else:
