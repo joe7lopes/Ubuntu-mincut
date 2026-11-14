@@ -6,6 +6,7 @@
 
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
+import Meta from 'gi://Meta';
 import St from 'gi://St';
 
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
@@ -41,10 +42,13 @@ export default class MincutBridgeExtension extends Extension {
         });
         this._proxy.init_async(GLib.PRIORITY_DEFAULT, null, null);
 
-        this._handler = this._clipboard.connect('owner-changed', (clipboard, selection) => {
-            if (selection !== St.ClipboardType.CLIPBOARD)
+        // GNOME 45 dropped St.Clipboard's "owner-changed" signal; the shell
+        // reports selection ownership through Meta.Selection instead.
+        this._selection = global.display.get_selection();
+        this._handler = this._selection.connect('owner-changed', (selection, selectionType) => {
+            if (selectionType !== Meta.SelectionType.SELECTION_CLIPBOARD)
                 return;
-            clipboard.get_text(St.ClipboardType.CLIPBOARD, (_c, text) => {
+            this._clipboard.get_text(St.ClipboardType.CLIPBOARD, (_c, text) => {
                 if (!text)
                     return;
                 this._proxy?.ClipboardChangedRemote(text, () => {});
@@ -56,8 +60,10 @@ export default class MincutBridgeExtension extends Extension {
     }
 
     disable() {
-        if (this._clipboard && this._handler)
-            this._clipboard.disconnect(this._handler);
+        if (this._selection && this._handler)
+            this._selection.disconnect(this._handler);
+        this._selection = null;
+        this._handler = 0;
         this._clipboard = null;
         if (this._exported) {
             this._exported.unexport();
